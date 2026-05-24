@@ -1,7 +1,8 @@
 import axios from 'axios'
 import type { ApiResponse } from '../types'
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? '/api/v1'
+const VITE_URL = import.meta.env.VITE_API_URL ?? ''
+const BASE_URL = VITE_URL ? `${VITE_URL}/api/v1` : '/api/v1'
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
