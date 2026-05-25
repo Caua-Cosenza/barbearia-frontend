@@ -27,17 +27,21 @@ interface CalendarDay {
 }
 
 function buildCalendar(count = 30): CalendarDay[] {
-  const today = new Date()
-  return Array.from({ length: count }, (_, i) => {
-    const d = new Date(today)
-    d.setDate(today.getDate() + i)
-    return {
-      iso: d.toISOString().split('T')[0],
-      day: d.getDate(),
-      weekday: WEEKDAYS_SHORT[d.getDay()],
-      month: MONTHS_SHORT[d.getMonth()],
+  const days: CalendarDay[] = []
+  const d = new Date()
+  while (days.length < count) {
+    const weekday = d.getDay()
+    if (weekday !== 0 && weekday !== 1) {
+      days.push({
+        iso: d.toISOString().split('T')[0],
+        day: d.getDate(),
+        weekday: WEEKDAYS_SHORT[weekday],
+        month: MONTHS_SHORT[d.getMonth()],
+      })
     }
-  })
+    d.setDate(d.getDate() + 1)
+  }
+  return days
 }
 
 function formatPrice(price: number | null | undefined): string {
@@ -117,17 +121,23 @@ export default function BookingModal({
     }
     setLoadingSlots(true)
     setTimeSlot(null)
-    const totalDurationMinutes = selectedServices.reduce((acc, s) => acc + (s.durationMinutes ?? 0), 0)
-    api.availableTimes
-      .fetch({
-        professionalId: professional.id,
-        serviceId: selectedServices[0].id,
-        date,
-        totalDurationMinutes: totalDurationMinutes > 0 ? totalDurationMinutes : undefined,
-      })
-      .then((res) => setSlots(res.data?.slots ?? []))
-      .catch(() => setSlots([]))
-      .finally(() => setLoadingSlots(false))
+    const timeout = setTimeout(() => {
+      const totalDurationMinutes = selectedServices.reduce((acc, s) => acc + (s.durationMinutes ?? 0), 0)
+      api.availableTimes
+        .fetch({
+          professionalId: professional.id,
+          serviceId: selectedServices[0].id,
+          date,
+          totalDurationMinutes: totalDurationMinutes > 0 ? totalDurationMinutes : undefined,
+        })
+        .then((res) => setSlots(res.data?.slots ?? []))
+        .catch(() => setSlots([]))
+        .finally(() => setLoadingSlots(false))
+    }, 300)
+    return () => {
+      clearTimeout(timeout)
+      setLoadingSlots(false)
+    }
   }, [date, professional, selectedServices])
 
   // Lock body scroll while open

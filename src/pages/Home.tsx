@@ -57,6 +57,15 @@ export function Home() {
 
   useEffect(() => { loadData() }, [])
 
+  useEffect(() => {
+    function handleSwitchTab(e: CustomEvent) {
+      const tab = e.detail as TabKey
+      if (['servicos', 'profissionais', 'avaliacoes'].includes(tab)) setActiveTab(tab)
+    }
+    globalThis.addEventListener('switchTab', handleSwitchTab as EventListener)
+    return () => globalThis.removeEventListener('switchTab', handleSwitchTab as EventListener)
+  }, [])
+
   function openModal(opts?: { service?: Service; professional?: Professional }) {
     setModal({ open: true, service: opts?.service ?? null, professional: opts?.professional ?? null })
   }

@@ -1,5 +1,20 @@
 import { useState } from 'react'
 
+const TAB_MAP: Record<string, string> = {
+  '#servicos': 'servicos',
+  '#profissionais': 'profissionais',
+  '#avaliacoes': 'avaliacoes',
+}
+
+function handleNavClick(e: React.MouseEvent<HTMLAnchorElement>, href: string, onClose?: () => void) {
+  e.preventDefault()
+  const tab = TAB_MAP[href]
+  if (tab) globalThis.dispatchEvent(new CustomEvent('switchTab', { detail: tab }))
+  const el = document.querySelector(href)
+  if (el) el.scrollIntoView({ behavior: 'smooth' })
+  onClose?.()
+}
+
 const NAV_LINKS = [
   { label: 'Início', href: '#inicio' },
   { label: 'Serviços', href: '#servicos' },
@@ -31,6 +46,7 @@ export default function Header({ onBook }: HeaderProps) {
               key={l.href}
               href={l.href}
               className="text-[#9ca3af] hover:text-white text-sm font-medium transition-colors duration-150"
+              onClick={(e) => handleNavClick(e, l.href)}
             >
               {l.label}
             </a>
@@ -72,7 +88,7 @@ export default function Header({ onBook }: HeaderProps) {
               key={l.href}
               href={l.href}
               className="block px-4 py-3 text-[#9ca3af] hover:text-white hover:bg-white/5 text-sm font-medium transition-colors"
-              onClick={() => setOpen(false)}
+              onClick={(e) => handleNavClick(e, l.href, () => setOpen(false))}
             >
               {l.label}
             </a>

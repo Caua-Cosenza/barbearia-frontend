@@ -66,7 +66,11 @@ export default function Step3DateTime({
   )
 
   useEffect(() => {
-    if (selectedDate) fetchSlots(selectedDate)
+    if (!selectedDate) return
+    const timeout = setTimeout(() => {
+      fetchSlots(selectedDate)
+    }, 300)
+    return () => clearTimeout(timeout)
   }, [selectedDate, fetchSlots])
 
   function prevMonth() {
