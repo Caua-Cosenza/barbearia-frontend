@@ -52,7 +52,9 @@ export default function Step4Confirm({
 
   const servicePrices = state.services.map(servicePrice)
   const allServicesHavePrice = servicePrices.every((p) => p !== null)
-  const totalMins = state.services.reduce((sum, s) => sum + s.durationMinutes, 0)
+  const rawMins = state.services.reduce((sum, s) => sum + s.durationMinutes, 0)
+  const totalMins = Math.min(rawMins, 50)
+  const durationCapped = rawMins > 50
   const totalCentsVal = allServicesHavePrice
     ? servicePrices.reduce<number>((sum, p) => sum + (p ?? 0), 0)
     : null
@@ -99,7 +101,9 @@ export default function Step4Confirm({
               )}
               <div className="flex justify-between text-sm">
                 <dt className="text-gray-400">Tempo total</dt>
-                <dd className="text-white font-medium">{formatDuration(totalMins)}</dd>
+                <dd className="text-white font-medium">
+                  {formatDuration(totalMins)}{durationCapped ? ' (máx)' : ''}
+                </dd>
               </div>
             </>
           )}

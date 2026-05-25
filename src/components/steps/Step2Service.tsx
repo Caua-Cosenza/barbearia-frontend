@@ -37,7 +37,6 @@ export default function Step2Service({ selected, onSelect, onNext, onBack }: Rea
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [limitWarning, setLimitWarning] = useState(false)
   const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
@@ -53,19 +52,14 @@ export default function Step2Service({ selected, onSelect, onNext, onBack }: Rea
 
   const currentMins = selected.reduce((acc, s) => acc + (s.durationMinutes ?? 0), 0)
   const currentCents = selected.reduce((acc, s) => acc + (s.amountCents ?? 0), 0)
-  const atLimit = currentMins >= MAX_DURATION
+  const cappedMins = Math.min(currentMins, MAX_DURATION)
+  const exceedsMax = currentMins > MAX_DURATION
 
   function toggle(service: Service) {
     const isSelected = selected.some((s) => s.id === service.id)
     if (isSelected) {
       if (selected.length > 1) onSelect(selected.filter((s) => s.id !== service.id))
     } else {
-      const newTotal = currentMins + (service.durationMinutes ?? 0)
-      if (newTotal > MAX_DURATION) {
-        setLimitWarning(true)
-        return
-      }
-      setLimitWarning(false)
       onSelect([...selected, service])
     }
   }
@@ -89,7 +83,6 @@ export default function Step2Service({ selected, onSelect, onNext, onBack }: Rea
           <div className="flex flex-col gap-3 mb-3">
             {visibleServices.map((s) => {
               const isSelected = selected.some((sel) => sel.id === s.id)
-              const wouldExceed = !isSelected && (currentMins + (s.durationMinutes ?? 0)) > MAX_DURATION
               const price = cardPrice(s)
               const isConsultar = price === 'Consultar'
 
@@ -98,14 +91,11 @@ export default function Step2Service({ selected, onSelect, onNext, onBack }: Rea
                   key={s.id}
                   type="button"
                   onClick={() => toggle(s)}
-                  disabled={wouldExceed}
                   className={[
                     'p-4 rounded-xl border-2 text-left transition-all duration-200',
-                    wouldExceed
-                      ? 'border-gray-800 bg-gray-900 opacity-40 cursor-not-allowed'
-                      : isSelected
-                        ? 'border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/20'
-                        : 'border-gray-700 bg-gray-800 hover:border-gray-500',
+                    isSelected
+                      ? 'border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/20'
+                      : 'border-gray-700 bg-gray-800 hover:border-gray-500',
                   ].join(' ')}
                 >
                   <div className="flex items-start gap-3">
@@ -176,18 +166,6 @@ export default function Step2Service({ selected, onSelect, onNext, onBack }: Rea
         </>
       )}
 
-      {/* Limit badges */}
-      {atLimit && (
-        <p className="text-amber-400 text-xs font-medium mb-3">
-          ⏱️ Tempo máximo atingido ({MAX_DURATION} min)
-        </p>
-      )}
-      {limitWarning && !atLimit && (
-        <p className="text-amber-400 text-xs font-medium mb-3">
-          ⏱️ Este serviço ultrapassaria o limite de {MAX_DURATION} minutos
-        </p>
-      )}
-
       {/* Summary bar */}
       {selected.length > 0 && (
         <div className="bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -197,7 +175,9 @@ export default function Step2Service({ selected, onSelect, onNext, onBack }: Rea
           <span className="text-gray-600">·</span>
           <span className="text-orange-400 font-semibold">{formatCurrency(currentCents)}</span>
           <span className="text-gray-600">·</span>
-          <span className="text-gray-400">{formatDuration(currentMins)}</span>
+          <span className="text-gray-400">
+            {formatDuration(cappedMins)}{exceedsMax ? ' (máx)' : ''}
+          </span>
         </div>
       )}
 

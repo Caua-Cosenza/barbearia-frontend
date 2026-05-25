@@ -129,7 +129,8 @@ export default function BookingModal({
     setLoadingSlots(true)
     setTimeSlot(null)
     const timeout = setTimeout(() => {
-      const totalDurationMinutes = selectedServices.reduce((acc, s) => acc + (s.durationMinutes ?? 0), 0)
+      const rawDuration = selectedServices.reduce((acc, s) => acc + (s.durationMinutes ?? 0), 0)
+      const totalDurationMinutes = Math.min(rawDuration, 50)
       api.availableTimes
         .fetch({
           professionalId: professional.id,
