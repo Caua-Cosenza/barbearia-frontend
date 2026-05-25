@@ -28,10 +28,10 @@ interface CalendarDay {
 
 function buildCalendar(count = 30): CalendarDay[] {
   const days: CalendarDay[] = []
-  const d = new Date()
+  let d = new Date()
   while (days.length < count) {
     const weekday = d.getDay()
-    if (weekday !== 0 && weekday !== 1) {
+    if (weekday !== 0) {
       days.push({
         iso: d.toISOString().split('T')[0],
         day: d.getDate(),
@@ -39,9 +39,16 @@ function buildCalendar(count = 30): CalendarDay[] {
         month: MONTHS_SHORT[d.getMonth()],
       })
     }
+    d = new Date(d)
     d.setDate(d.getDate() + 1)
   }
   return days
+}
+
+function isWalkInDay(dateStr: string, pro: Professional | null): boolean {
+  if (!pro || pro.isWalkIn) return false
+  const weekday = new Date(dateStr + 'T12:00:00').getDay()
+  return weekday === 5 || weekday === 6
 }
 
 function formatPrice(price: number | null | undefined): string {
@@ -216,10 +223,13 @@ export default function BookingModal({
     if (dateStr < todayStr) return true
     if (dateStr > maxDateStr) return true
     const weekday = new Date(calY, calMo, day).getDay()
+    if (weekday === 0) return true
+    // Fri/Sat are walk-in days — always clickable
+    if (weekday === 5 || weekday === 6) return false
     if (professional?.availability && professional.availability.length > 0) {
       return !professional.availability.some((a) => a.dayOfWeek === weekday)
     }
-    return weekday === 0 || weekday === 1
+    return false
   }
 
   function prevCalMonth() {
@@ -498,21 +508,23 @@ export default function BookingModal({
                   ref={dateRowRef}
                   className="flex gap-2 overflow-x-auto pb-1 -mx-5 px-5 scrollbar-hide mt-3"
                 >
-                  {CALENDAR.map((d) => (
-                    <button
-                      key={d.iso}
-                      onClick={() => setDate(d.iso)}
-                      className={`flex flex-col items-center shrink-0 w-[54px] py-3 rounded-xl border transition-all duration-150 ${
-                        date === d.iso
-                          ? 'border-[#2563eb] bg-[#2563eb] text-white'
-                          : 'border-white/5 bg-[#1a1a2e] text-[#9ca3af] hover:border-white/20 hover:text-white'
-                      }`}
-                    >
-                      <span className="text-[10px] font-semibold uppercase tracking-wide">{d.weekday}</span>
-                      <span className="text-xl font-extrabold leading-snug">{d.day}</span>
-                      <span className="text-[10px]">{d.month}</span>
-                    </button>
-                  ))}
+                  {CALENDAR.map((cd) => {
+                    const isWalkIn = professional && !professional.isWalkIn && (cd.weekday === 'Sex' || cd.weekday === 'Sáb')
+                    let dayClass = 'border-white/5 bg-[#1a1a2e] text-[#9ca3af] hover:border-white/20 hover:text-white'
+                    if (date === cd.iso) dayClass = 'border-[#2563eb] bg-[#2563eb] text-white'
+                    else if (isWalkIn) dayClass = 'border-amber-500/30 bg-amber-500/10 text-amber-400 hover:border-amber-500/50 hover:text-amber-300'
+                    return (
+                      <button
+                        key={cd.iso}
+                        onClick={() => setDate(cd.iso)}
+                        className={`flex flex-col items-center shrink-0 w-[54px] py-3 rounded-xl border transition-all duration-150 ${dayClass}`}
+                      >
+                        <span className="text-[10px] font-semibold uppercase tracking-wide">{cd.weekday}</span>
+                        <span className="text-xl font-extrabold leading-snug">{cd.day}</span>
+                        <span className="text-[10px]">{cd.month}</span>
+                      </button>
+                    )
+                  })}
                 </div>
                 <button
                   type="button"
@@ -529,9 +541,28 @@ export default function BookingModal({
           {/* ── HORÁRIOS ── */}
           {date && professional && !professional.isWalkIn && (
             <section>
-              <SectionLabel step={4} label="Horário" done={!!timeSlot} />
+              <SectionLabel step={4} label="Horário" done={!!timeSlot || isWalkInDay(date, professional)} />
               <div className="mt-3">
-                {loadingSlots ? (
+                {isWalkInDay(date, professional) ? (
+                  <div className="bg-zinc-900 border border-amber-500/30 rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl" aria-hidden="true">✂️</span>
+                      <div>
+                        <h3 className="text-white font-bold text-sm">Ordem de Chegada</h3>
+                        <span className="inline-flex mt-1 items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          Sexta e Sábado
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-zinc-400 text-sm">
+                      Neste dia, {professional.name.split(' ')[0]} atende por ordem de chegada.
+                      Compareça à barbearia no horário de funcionamento.
+                    </p>
+                    <div className="text-xs text-zinc-500 font-mono">
+                      Horário: 08:40 – 19:00
+                    </div>
+                  </div>
+                ) : loadingSlots ? (
                   <div className="grid grid-cols-4 gap-2">
                     {Array.from({ length: 8 }).map((_, i) => (
                       <div key={i} className="h-10 bg-[#1a1a2e] rounded-lg animate-pulse" />
@@ -542,28 +573,43 @@ export default function BookingModal({
                     Nenhum horário disponível nesta data.
                   </p>
                 ) : (
-                  <div className="grid grid-cols-4 gap-2">
-                    {slots.map((slot) => (
-                      <button
-                        key={slot}
-                        onClick={() => setTimeSlot(slot)}
-                        className={`py-2.5 rounded-lg text-sm font-semibold border transition-all duration-150 ${
-                          timeSlot === slot
-                            ? 'border-[#2563eb] bg-[#2563eb] text-white'
-                            : 'border-white/5 bg-[#1a1a2e] text-[#9ca3af] hover:border-white/20 hover:text-white'
-                        }`}
-                      >
-                        {slot}
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-4 gap-2">
+                      {slots.map((slot) => (
+                        <button
+                          key={slot}
+                          onClick={() => setTimeSlot(slot)}
+                          className={`py-2.5 rounded-lg text-sm font-semibold border transition-all duration-150 ${
+                            timeSlot === slot
+                              ? 'border-[#2563eb] bg-[#2563eb] text-white'
+                              : 'border-white/5 bg-[#1a1a2e] text-[#9ca3af] hover:border-white/20 hover:text-white'
+                          }`}
+                        >
+                          {slot}
+                        </button>
+                      ))}
+                    </div>
+                    <a
+                      href="https://wa.me/5522992718402"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-green-500/5 border border-green-500/10 hover:bg-green-500/10 transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                      </svg>
+                      <span className="text-xs text-zinc-400">
+                        Precisa de horário após 19h? <span className="text-green-400">Fale pelo WhatsApp</span> (taxa adicional)
+                      </span>
+                    </a>
+                  </>
                 )}
               </div>
             </section>
           )}
 
           {/* ── DADOS DO CLIENTE ── */}
-          {!professional?.isWalkIn && (
+          {!professional?.isWalkIn && !(date && isWalkInDay(date, professional ?? null)) && (
           <section>
             <SectionLabel step={5} label="Seus dados" done={customerName.trim().length >= 2 && customerPhone.replace(/\D/g, '').length >= 10} />
             <div className="space-y-3 mt-3">
@@ -630,7 +676,7 @@ export default function BookingModal({
           )}
 
           {/* ── CONFIRMAR ── */}
-          {professional?.isWalkIn ? (
+          {professional?.isWalkIn || (date && isWalkInDay(date, professional ?? null)) ? (
             <button
               onClick={onClose}
               className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl transition-all duration-150 text-base active:scale-[0.98]"
