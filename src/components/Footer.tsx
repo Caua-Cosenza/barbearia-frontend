@@ -39,8 +39,11 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto mt-6 pt-4 border-t border-zinc-800 text-center">
+      <div className="max-w-6xl mx-auto mt-6 pt-4 border-t border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-2">
         <p className="text-zinc-600 text-xs">© 2026 Barbearia Jhonatan Correa. Todos os direitos reservados.</p>
+        <a href="/privacidade" className="text-zinc-500 hover:text-zinc-400 text-xs transition-colors">
+          Política de Privacidade
+        </a>
       </div>
     </footer>
   )

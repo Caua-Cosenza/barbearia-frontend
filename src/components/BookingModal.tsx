@@ -64,10 +64,12 @@ function formatDuration(minutes: number): string {
 }
 
 function formatPhone(v: string): string {
-  const d = v.replace(/\D/g, '').slice(0, 11)
+  let d = v.replace(/\D/g, '')
+  // Autocomplete mobile pode preencher com 55 (código Brasil) — remove o prefixo
+  if (d.startsWith('55') && d.length > 11) d = d.slice(2)
+  d = d.slice(0, 11)
   if (d.length <= 2) return d
   if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`
-  if (d.length <= 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7, 11)}`
 }
 
@@ -703,6 +705,13 @@ export default function BookingModal({
               )}
             </button>
           )}
+
+          <p className="text-center text-zinc-500 text-xs mt-3">
+            Ao confirmar, você concorda com nossa{' '}
+            <a href="/privacidade" target="_blank" className="text-blue-400 hover:text-blue-300 underline">
+              Política de Privacidade
+            </a>
+          </p>
 
           {/* Bottom safe area */}
           <div className="h-2" />

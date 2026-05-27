@@ -39,6 +39,14 @@ function getEffectiveBadge(status: AdminAppointmentStatus, hasPassed: boolean) {
   return STATUS_CONFIG[status]
 }
 
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 10) return 'Atualizado agora'
+  if (seconds < 60) return `Atualizado há ${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  return `Atualizado há ${minutes}min`
+}
+
 // ---- Stat card ----
 
 function StatCard({ title, value, accent, loading }: {
@@ -255,6 +263,9 @@ export function AdminDashboard() {
   const [loadingAppts, setLoadingAppts] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const [refreshing, setRefreshing] = useState(false)
+  const [, setTick] = useState(0)
 
   async function handleEnableNotifications() {
     const granted = await requestPermission()
@@ -274,26 +285,56 @@ export function AdminDashboard() {
     })
   }
 
-  useEffect(() => {
-    api.admin
-      .stats()
-      .then((res) => { if (res.success && res.data) setStats(res.data) })
-      .catch(() => setError('Erro ao carregar estatísticas'))
-      .finally(() => setLoadingStats(false))
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await api.admin.stats()
+      if (res.success && res.data) setStats(res.data)
+    } catch {
+      setError('Erro ao carregar estatísticas')
+    }
   }, [])
 
-  const fetchAppointments = useCallback((d: string) => {
+  const fetchAppointments = useCallback(async (d: string) => {
+    try {
+      const res = await api.admin.appointments(d)
+      if (res.success && res.data) setAppointments(res.data)
+    } catch {
+      setError('Erro ao carregar agendamentos')
+    }
+  }, [])
+
+  // Initial stats load
+  useEffect(() => {
+    fetchStats().finally(() => setLoadingStats(false))
+  }, [fetchStats])
+
+  // Load appointments when date changes
+  useEffect(() => {
     setLoadingAppts(true)
-    api.admin
-      .appointments(d)
-      .then((res) => { if (res.success && res.data) setAppointments(res.data) })
-      .catch(() => setError('Erro ao carregar agendamentos'))
-      .finally(() => setLoadingAppts(false))
-  }, [])
-
-  useEffect(() => {
-    fetchAppointments(date)
+    fetchAppointments(date).finally(() => setLoadingAppts(false))
   }, [date, fetchAppointments])
+
+  const refreshData = useCallback(async (silent = false) => {
+    if (!silent) setRefreshing(true)
+    try {
+      await Promise.all([fetchStats(), fetchAppointments(date)])
+      setLastUpdate(new Date())
+    } finally {
+      if (!silent) setRefreshing(false)
+    }
+  }, [fetchStats, fetchAppointments, date])
+
+  // Auto-refresh every 30s
+  useEffect(() => {
+    const interval = setInterval(() => { void refreshData(true) }, 30000)
+    return () => clearInterval(interval)
+  }, [refreshData])
+
+  // Tick every 10s to keep "atualizado há X" label fresh
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 10000)
+    return () => clearInterval(t)
+  }, [])
 
   async function handleStatusChange(id: string, status: AdminAppointmentStatus) {
     if (updatingId) return
@@ -302,8 +343,7 @@ export function AdminDashboard() {
       const res = await api.admin.updateStatus(id, status)
       if (res.success) {
         setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)))
-        // Refresh stats in background since counts may have changed
-        api.admin.stats().then((r) => { if (r.success && r.data) setStats(r.data) })
+        void fetchStats()
       }
     } catch {
       setError('Erro ao atualizar status. Tente novamente.')
@@ -320,8 +360,26 @@ export function AdminDashboard() {
 
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-[#9ca3af] text-sm mt-0.5">Visão geral dos agendamentos</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+            <button
+              onClick={() => { void refreshData(false) }}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <svg
+                className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {refreshing ? 'Atualizando...' : 'Atualizar'}
+            </button>
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-[#9ca3af] text-sm">Visão geral dos agendamentos</p>
+            <span className="text-zinc-600 text-xs">· {formatTimeAgo(lastUpdate)}</span>
+          </div>
         </div>
 
         {showPushBanner && (
