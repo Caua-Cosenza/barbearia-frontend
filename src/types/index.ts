@@ -104,6 +104,17 @@ export interface CancelPageData {
   canCancel: boolean
 }
 
+// ---- Blocked slot type ----
+
+export interface BlockedSlot {
+  id: string
+  date: string
+  startTime: string
+  endTime: string
+  reason: string | null
+  createdAt: string
+}
+
 // ---- Admin types ----
 
 export type AdminAppointmentStatus =

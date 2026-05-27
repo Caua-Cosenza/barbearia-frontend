@@ -1,4 +1,4 @@
-import { get, post, put } from './client'
+import { get, post, put, del } from './client'
 import type {
   Professional,
   Service,
@@ -11,6 +11,7 @@ import type {
   AdminAppointment,
   AdminStats,
   AdminAppointmentStatus,
+  BlockedSlot,
 } from '../types'
 
 export const api = {
@@ -61,5 +62,19 @@ export const api = {
         `/admin/appointments/${id}/status`,
         { status },
       ),
+
+    // Blocked slots
+    blockedSlots: {
+      list: (date: string, professionalId: string) =>
+        get<BlockedSlot[]>(`/admin/blocked-slots?date=${date}&professionalId=${professionalId}`),
+      create: (data: {
+        professionalId: string
+        date: string
+        startTime: string
+        endTime: string
+        reason?: string
+      }) => post<BlockedSlot>('/admin/blocked-slots', data),
+      remove: (id: string) => del<null>(`/admin/blocked-slots/${id}`),
+    },
   },
 }

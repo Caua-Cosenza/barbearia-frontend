@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '../../api/endpoints'
 import { AdminLayout } from '../../components/admin/AdminLayout'
 import { usePushNotification } from '../../hooks/usePushNotification'
-import type { AdminAppointment, AdminStats, AdminAppointmentStatus } from '../../types'
+import type { AdminAppointment, AdminStats, AdminAppointmentStatus, BlockedSlot } from '../../types'
 
 const PUSH_DISMISSED_KEY = 'push_banner_dismissed'
 
@@ -245,6 +245,24 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () =>
   )
 }
 
+// ---- Block modal helpers ----
+
+const JHONATAN_ID = '00000000-0000-0000-0000-000000000010'
+
+function generateTimeOptions(): string[] {
+  const times: string[] = []
+  for (let h = 8; h <= 19; h++) {
+    for (let m = 0; m < 60; m += 10) {
+      if (h === 8 && m < 40) continue
+      if (h === 19 && m > 0) continue
+      times.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    }
+  }
+  return times
+}
+
+const TIME_OPTIONS = generateTimeOptions()
+
 // ---- Main component ----
 
 export function AdminDashboard() {
@@ -266,6 +284,13 @@ export function AdminDashboard() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
   const [refreshing, setRefreshing] = useState(false)
   const [, setTick] = useState(0)
+  const [showBlockModal, setShowBlockModal] = useState(false)
+  const [blockDate, setBlockDate] = useState('')
+  const [blockStartTime, setBlockStartTime] = useState('')
+  const [blockEndTime, setBlockEndTime] = useState('')
+  const [blockReason, setBlockReason] = useState('')
+  const [blockSubmitting, setBlockSubmitting] = useState(false)
+  const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>([])
 
   async function handleEnableNotifications() {
     const granted = await requestPermission()
@@ -303,26 +328,36 @@ export function AdminDashboard() {
     }
   }, [])
 
+  const fetchBlockedSlots = useCallback(async (d: string) => {
+    try {
+      const res = await api.admin.blockedSlots.list(d, JHONATAN_ID)
+      if (res.success) setBlockedSlots(res.data ?? [])
+    } catch {
+      // supplementary — failures are silent
+    }
+  }, [])
+
   // Initial stats load
   useEffect(() => {
     fetchStats().finally(() => setLoadingStats(false))
   }, [fetchStats])
 
-  // Load appointments when date changes
+  // Load appointments and blocked slots when date changes
   useEffect(() => {
     setLoadingAppts(true)
     fetchAppointments(date).finally(() => setLoadingAppts(false))
-  }, [date, fetchAppointments])
+    void fetchBlockedSlots(date)
+  }, [date, fetchAppointments, fetchBlockedSlots])
 
   const refreshData = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true)
     try {
-      await Promise.all([fetchStats(), fetchAppointments(date)])
+      await Promise.all([fetchStats(), fetchAppointments(date), fetchBlockedSlots(date)])
       setLastUpdate(new Date())
     } finally {
       if (!silent) setRefreshing(false)
     }
-  }, [fetchStats, fetchAppointments, date])
+  }, [fetchStats, fetchAppointments, fetchBlockedSlots, date])
 
   // Auto-refresh every 30s
   useEffect(() => {
@@ -352,6 +387,42 @@ export function AdminDashboard() {
     }
   }
 
+  async function handleCreateBlock() {
+    if (!blockDate || !blockStartTime || !blockEndTime) return
+    setBlockSubmitting(true)
+    try {
+      const res = await api.admin.blockedSlots.create({
+        professionalId: JHONATAN_ID,
+        date: blockDate,
+        startTime: blockStartTime,
+        endTime: blockEndTime,
+        reason: blockReason || undefined,
+      })
+      if (res.success) {
+        setShowBlockModal(false)
+        setBlockDate('')
+        setBlockStartTime('')
+        setBlockEndTime('')
+        setBlockReason('')
+        void fetchBlockedSlots(date)
+      }
+    } catch {
+      setError('Erro ao criar bloqueio de horário')
+    } finally {
+      setBlockSubmitting(false)
+    }
+  }
+
+  async function handleDeleteBlock(id: string) {
+    if (!confirm('Remover esta reserva de horário?')) return
+    try {
+      await api.admin.blockedSlots.remove(id)
+      void fetchBlockedSlots(date)
+    } catch {
+      setError('Erro ao remover bloqueio')
+    }
+  }
+
   const appointmentCount = appointments.length
 
   return (
@@ -360,7 +431,7 @@ export function AdminDashboard() {
 
         {/* Header */}
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold text-white">Dashboard</h1>
             <button
               onClick={() => { void refreshData(false) }}
@@ -374,6 +445,12 @@ export function AdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               {refreshing ? 'Atualizando...' : 'Atualizar'}
+            </button>
+            <button
+              onClick={() => { setBlockDate(date); setShowBlockModal(true) }}
+              className="flex items-center gap-1.5 text-xs bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              🔒 Reservar Horário
             </button>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
@@ -491,7 +568,113 @@ export function AdminDashboard() {
             </>
           )}
         </div>
+
+        {/* Blocked slots section */}
+        {blockedSlots.length > 0 && (
+          <div className="bg-[#1a1a2e] rounded-2xl border border-white/5 p-4">
+            <h3 className="text-amber-400 text-sm font-semibold mb-3 flex items-center gap-1.5">
+              🔒 Horários Reservados
+            </h3>
+            <div className="space-y-2">
+              {blockedSlots.map((block) => (
+                <div key={block.id} className="flex items-center justify-between bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
+                  <div>
+                    <span className="text-white text-sm font-medium">
+                      {block.startTime} – {block.endTime}
+                    </span>
+                    {block.reason && (
+                      <span className="text-amber-400/70 text-xs ml-2">
+                        ({block.reason})
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { void handleDeleteBlock(block.id) }}
+                    className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-400/10 transition-colors"
+                  >
+                    Remover
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Block modal — fixed overlay, outside max-w container */}
+      {showBlockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <div className="bg-[#0f0f0f] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-white font-semibold text-lg mb-4">Reservar Horário</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[#9ca3af] text-xs block mb-1.5">Data</label>
+                <input
+                  type="date"
+                  min={todayISO()}
+                  value={blockDate}
+                  onChange={(e) => setBlockDate(e.target.value)}
+                  className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-colors"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[#9ca3af] text-xs block mb-1.5">Início</label>
+                  <select
+                    value={blockStartTime}
+                    onChange={(e) => setBlockStartTime(e.target.value)}
+                    className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-colors"
+                  >
+                    <option value="">--</option>
+                    {TIME_OPTIONS.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[#9ca3af] text-xs block mb-1.5">Fim</label>
+                  <select
+                    value={blockEndTime}
+                    onChange={(e) => setBlockEndTime(e.target.value)}
+                    className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-colors"
+                  >
+                    <option value="">--</option>
+                    {TIME_OPTIONS.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-[#9ca3af] text-xs block mb-1.5">Motivo (opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Micropigmentação"
+                  maxLength={200}
+                  value={blockReason}
+                  onChange={(e) => setBlockReason(e.target.value)}
+                  className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-amber-500/50 transition-colors"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { void handleCreateBlock() }}
+                disabled={!blockDate || !blockStartTime || !blockEndTime || blockSubmitting}
+                className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold text-sm py-2.5 rounded-lg transition-colors"
+              >
+                {blockSubmitting ? 'Reservando...' : 'Reservar'}
+              </button>
+              <button
+                onClick={() => setShowBlockModal(false)}
+                className="flex-1 bg-white/5 hover:bg-white/10 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   )
 }
