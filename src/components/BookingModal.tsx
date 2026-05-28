@@ -33,7 +33,7 @@ function buildCalendar(count = 30): CalendarDay[] {
     const weekday = d.getDay()
     if (weekday !== 0) {
       days.push({
-        iso: d.toISOString().split('T')[0],
+        iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
         day: d.getDate(),
         weekday: WEEKDAYS_SHORT[weekday],
         month: MONTHS_SHORT[d.getMonth()],
