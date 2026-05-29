@@ -45,13 +45,13 @@ Interface responsiva com dois fluxos principais: **tela pública** onde o client
 ### Pré-requisitos
 
 - Node.js 20+
-- Backend rodando (veja [barbearia-backend](https://github.com/cauacosenza88-jpg/barbearia-backend))
+- Backend rodando (veja [barbearia-backend](https://github.com/Caua-Cosenza/barbearia-backend))
 
 ### Instalação
 
 ```bash
 # 1. Clonar o repositório
-git clone https://github.com/cauacosenza88-jpg/barbearia-frontend.git
+git clone https://github.com/Caua-Cosenza/barbearia-frontend.git
 cd barbearia-frontend
 
 # 2. Instalar dependências
@@ -127,7 +127,7 @@ frontend/
 
 O frontend é hospedado no **Cloudflare Pages** com deploy automático a cada push na branch `main`.
 
-Regras de segurança adicionais (rate limiting, bot protection) são gerenciadas pelo repositório [barbearia-cloudflare](https://github.com/cauacosenza88-jpg).
+Regras de segurança adicionais (rate limiting, bot protection) são gerenciadas pelo repositório [barbearia-cloudflare](https://github.com/Caua-Cosenza).
 
 ---
 
