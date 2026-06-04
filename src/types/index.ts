@@ -136,6 +136,10 @@ export interface AdminAppointment {
     name: string
     durationMinutes: number
   }
+  services: {
+    name: string
+    durationMinutes: number
+  }[]
   professional: {
     id: string
     name: string

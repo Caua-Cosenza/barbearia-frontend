@@ -47,6 +47,19 @@ function formatTimeAgo(date: Date): string {
   return `Atualizado há ${minutes}min`
 }
 
+function serviceDisplay(a: AdminAppointment): string {
+  return a.services.length > 0
+    ? a.services.map((s) => s.name).join(' + ')
+    : a.service.name
+}
+
+function totalDuration(a: AdminAppointment): number {
+  if (a.services.length > 0) {
+    return Math.min(a.services.reduce((sum, s) => sum + s.durationMinutes, 0), 50)
+  }
+  return a.service.durationMinutes
+}
+
 // ---- Stat card ----
 
 function StatCard({ title, value, accent, loading }: {
@@ -148,15 +161,15 @@ function AppointmentRow({ appointment: a, updating, onStatusChange }: {
   updating: boolean
   onStatusChange: (id: string, status: AdminAppointmentStatus) => void
 }) {
-  const hasPassed = appointmentHasPassed(a.scheduledAt, a.service.durationMinutes)
+  const hasPassed = appointmentHasPassed(a.scheduledAt, totalDuration(a))
   const badge = getEffectiveBadge(a.status, hasPassed)
   return (
     <tr className="hover:bg-white/[0.02] transition-colors">
       <td className="px-6 py-4 text-sm text-white font-mono whitespace-nowrap">{formatTime(a.scheduledAt)}</td>
       <td className="px-6 py-4 text-sm text-white">{a.customerName}</td>
       <td className="px-6 py-4 text-sm text-[#9ca3af] font-mono whitespace-nowrap">{a.customerPhone}</td>
-      <td className="px-6 py-4 text-sm text-white">{a.service.name}</td>
-      <td className="px-6 py-4 text-sm text-[#9ca3af] whitespace-nowrap">{a.service.durationMinutes} min</td>
+      <td className="px-6 py-4 text-sm text-white">{serviceDisplay(a)}</td>
+      <td className="px-6 py-4 text-sm text-[#9ca3af] whitespace-nowrap">{totalDuration(a)} min</td>
       <td className="px-6 py-4">
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${badge.className}`}>
           {badge.label}
@@ -182,7 +195,7 @@ function AppointmentCard({ appointment: a, updating, onStatusChange }: {
   updating: boolean
   onStatusChange: (id: string, status: AdminAppointmentStatus) => void
 }) {
-  const hasPassed = appointmentHasPassed(a.scheduledAt, a.service.durationMinutes)
+  const hasPassed = appointmentHasPassed(a.scheduledAt, totalDuration(a))
   const badge = getEffectiveBadge(a.status, hasPassed)
   return (
     <div className="px-4 py-4 space-y-3">
@@ -199,7 +212,7 @@ function AppointmentCard({ appointment: a, updating, onStatusChange }: {
         </div>
       </div>
       <p className="text-xs text-[#9ca3af]">
-        {a.service.name} · {a.service.durationMinutes} min · {a.professional.name}
+        {serviceDisplay(a)} · {totalDuration(a)} min · {a.professional.name}
       </p>
       <ActionButtons
         status={a.status}
