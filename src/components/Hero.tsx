@@ -68,7 +68,7 @@ export default function Hero({ onBook }: HeroProps) {
             {[
               { value: '500+', label: 'Clientes atendidos' },
               { value: '5.0★', label: 'Avaliação média' },
-              { value: '2', label: 'Profissionais' },
+              { value: '1', label: 'Profissional' },
             ].map((stat) => (
               <div key={stat.label}>
                 <p className="text-white font-extrabold text-2xl leading-tight">{stat.value}</p>
