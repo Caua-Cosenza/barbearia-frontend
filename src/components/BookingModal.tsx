@@ -74,7 +74,7 @@ function formatPhone(v: string): string {
 }
 
 const PROFESSIONAL_PHOTOS: Record<string, string> = {
-  'Jhonatan Correa': '/jhonatan.jpeg',
+  'Jhonatan Correa': '/jhonatan.jpeg?v=2',
   'Sandro Santos': '/sandro.jpeg',
 }
 
@@ -416,8 +416,8 @@ export default function BookingModal({
                   <div>
                     <p className="text-white text-sm font-medium">Horário de funcionamento</p>
                     <div className="mt-1 space-y-0.5 text-xs text-[#9ca3af] font-mono">
-                      <p>Ter–Sáb:&nbsp;&nbsp;08:20 – 19:00</p>
-                      <p>Dom–Seg:&nbsp;&nbsp;Fechado</p>
+                      <p>Seg–Qui:&nbsp;&nbsp;08:40 – 19:30</p>
+                      <p>Sex–Dom:&nbsp;&nbsp;Fechado</p>
                     </div>
                   </div>
                 </li>
@@ -563,7 +563,7 @@ export default function BookingModal({
                       Compareça à barbearia no horário de funcionamento.
                     </p>
                     <div className="text-xs text-zinc-500 font-mono">
-                      Horário: 08:40 – 19:00
+                      Horário: 08:40 – 19:30
                     </div>
                   </div>
                 ) : loadingSlots ? (

@@ -2,7 +2,7 @@ import { useReveal } from '../hooks/useReveal'
 import type { Professional } from '../types'
 
 const PROFESSIONAL_PHOTOS: Record<string, string> = {
-  'Jhonatan Correa': '/jhonatan.jpeg',
+  'Jhonatan Correa': '/jhonatan.jpeg?v=2',
   'Sandro Santos': '/sandro.jpeg',
 }
 
@@ -63,7 +63,7 @@ export default function ProfessionalsGrid({ professionals, loading, onBook }: Pr
             <div className="w-full">
               <p className="text-white font-semibold text-sm leading-tight">{pro.name}</p>
               {pro.bio && (
-                <p className="text-[#9ca3af] text-xs mt-1 line-clamp-2 leading-relaxed">{pro.bio}</p>
+                <p className="text-[#9ca3af] text-xs mt-1 leading-relaxed">{pro.bio}</p>
               )}
             </div>
 
