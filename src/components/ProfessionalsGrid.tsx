@@ -3,6 +3,7 @@ import type { Professional } from '../types'
 
 const PROFESSIONAL_PHOTOS: Record<string, string> = {
   'Jhonatan Correa': '/jhonatan.jpeg',
+  'Sandro Santos': '/sandro.jpeg',
 }
 
 interface ProfessionalsGridProps {

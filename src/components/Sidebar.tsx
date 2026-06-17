@@ -1,7 +1,7 @@
 import { useReveal } from '../hooks/useReveal'
 
 const HOURS = [
-  { day: 'Segunda – Quinta', hours: '08:40 – 19:00', closed: false },
+  { day: 'Segunda – Quinta', hours: '08:40 – 19:30', closed: false },
   { day: 'Sexta – Sábado', hours: 'Ordem de chegada', closed: false },
   { day: 'Domingo', hours: 'Fechado', closed: true },
 ]

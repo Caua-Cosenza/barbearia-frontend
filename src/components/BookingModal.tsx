@@ -75,6 +75,7 @@ function formatPhone(v: string): string {
 
 const PROFESSIONAL_PHOTOS: Record<string, string> = {
   'Jhonatan Correa': '/jhonatan.jpeg',
+  'Sandro Santos': '/sandro.jpeg',
 }
 
 const CALENDAR = buildCalendar()
